@@ -1,11 +1,14 @@
 import { useState, useEffect } from "react";
-import { initialFruits } from "../data/initialFruits"; // Para sacar las imágenes disponibles
+import { createPortal } from "react-dom"; // <--- 1. IMPORTAR PORTAL
+import { initialFruits } from "../data/initialFruits";
 import { useSound } from "../hooks/useSound";
 
 export const FruitForm = ({ fruitToEdit, onSubmit, onCancel }) => {
-  const playSound = useSound(); // <--- Inicializar
-  // Extraemos las imágenes únicas de tu data inicial para el selector
-  const availableImages = initialFruits.map((f) => f.image);
+  const playSound = useSound();
+
+  // Extraemos las imágenes únicas para el selector
+  // (Usamos Set para evitar duplicados si hay varias frutas con la misma imagen)
+  const availableImages = [...new Set(initialFruits.map((f) => f.image))];
 
   // Estado para animación de error
   const [isShake, setIsShake] = useState(false);
@@ -16,12 +19,11 @@ export const FruitForm = ({ fruitToEdit, onSubmit, onCancel }) => {
     price: "",
     quantity: "",
     description: "",
-    image: availableImages[0], // Imagen por defecto
+    image: availableImages[0],
     bgColor: "bg-white",
     colorAccent: "shadow-gray-400",
   });
 
-  // Si nos pasan una fruta (Modo Edición), rellenamos el formulario
   useEffect(() => {
     if (fruitToEdit) {
       setFormData(fruitToEdit);
@@ -39,17 +41,14 @@ export const FruitForm = ({ fruitToEdit, onSubmit, onCancel }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    // --- VALIDACIÓN CON SONIDO DE ERROR ---
+    // --- VALIDACIÓN ---
     if (!formData.name.trim() || formData.price <= 0 || formData.quantity < 0) {
-      playSound("error"); // <--- ¡AQUÍ SUENA EL ERROR!
-
-      // Activamos animación de vibración
+      playSound("error");
       setIsShake(true);
-      setTimeout(() => setIsShake(false), 500); // Quitamos la clase después de 0.5s
+      setTimeout(() => setIsShake(false), 500);
       return;
     }
 
-    // Convertir números (el input devuelve strings)
     const processedData = {
       ...formData,
       price: parseFloat(formData.price),
@@ -59,12 +58,14 @@ export const FruitForm = ({ fruitToEdit, onSubmit, onCancel }) => {
     onSubmit(processedData);
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-fruit-wood/50 backdrop-blur-sm animate-fadeIn">
+  // 2. ENVOLVER EN createPortal
+  return createPortal(
+    // 3. Z-INDEX SUPERIOR (z-[9999])
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-fruit-wood/50 backdrop-blur-sm animate-fadeIn">
       <div
         className={`
         bg-fruit-base w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden border-4 border-white
-        ${isShake ? "animate-shake" : "animate-scaleIn"} // <--- Clase condicional
+        ${isShake ? "animate-shake" : "animate-scaleIn"}
       `}
       >
         {/* Header */}
@@ -76,7 +77,7 @@ export const FruitForm = ({ fruitToEdit, onSubmit, onCancel }) => {
 
         <form
           onSubmit={handleSubmit}
-          className="p-6 space-y-4 max-h-[80vh] overflow-y-auto"
+          className="p-6 space-y-4 max-h-[80vh] overflow-y-auto custom-scrollbar"
         >
           {/* Selector Visual de Imágenes */}
           <div>
@@ -189,11 +190,11 @@ export const FruitForm = ({ fruitToEdit, onSubmit, onCancel }) => {
           </div>
 
           {/* Botones de Acción */}
-          <div className="flex gap-3 pt-4 p-6">
+          <div className="flex gap-3 pt-4 border-t border-gray-100 mt-2">
             <button
               type="button"
               onClick={() => {
-                playSound("ui-click"); // <--- Sonido Click al cancelar
+                playSound("ui-click");
                 onCancel();
               }}
               className="flex-1 py-3 bg-gray-100 text-gray-500 font-bold rounded-xl hover:bg-gray-200 transition-colors"
@@ -209,6 +210,7 @@ export const FruitForm = ({ fruitToEdit, onSubmit, onCancel }) => {
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body, // <--- 4. INYECTAR EN EL BODY
   );
 };
